@@ -1,0 +1,17 @@
+node_modules
+.env
+.DS_Store
+
+# Hardhat files
+cache
+artifacts
+coverage.json
+coverage
+abi
+cache_hardhat
+
+# Typechain generated files
+generated-types
+
+# Hardhat migrate
+.storage.json

@@ -1,0 +1,16 @@
+[profile.default]
+src = "contracts"
+out = "artifacts"
+libs = ["node_modules", "lib"]
+remappings = [
+    "@openzeppelin/=node_modules/@openzeppelin/",
+    "@solarity/=node_modules/@solarity/",
+    "@uniswap/=node_modules/@uniswap/",
+    "base64-sol/=node_modules/base64-sol/",
+    "hardhat/=node_modules/hardhat/",
+]
+
+[fuzz]
+runs = 1256
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
