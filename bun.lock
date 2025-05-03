@@ -4,9 +4,9 @@
     "": {
       "name": "hardhat-template",
       "dependencies": {
-        "@openzeppelin/contracts": "5.2.0",
-        "@openzeppelin/contracts-upgradeable": "5.2.0",
-        "@solarity/solidity-lib": "3.0.0-rc.2",
+        "@openzeppelin/contracts": "5.3.0",
+        "@openzeppelin/contracts-upgradeable": "5.3.0",
+        "@solarity/solidity-lib": "3.1.0",
       },
       "devDependencies": {
         "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
@@ -263,9 +263,9 @@
 
     "@nomicfoundation/solidity-analyzer-win32-x64-msvc": ["@nomicfoundation/solidity-analyzer-win32-x64-msvc@0.1.2", "", {}, "sha512-Fdjli4DCcFHb4Zgsz0uEJXZ2K7VEO+w5KVv7HmT7WO10iODdU9csC2az4jrhEsRtiR9Gfd74FlG0NYlw1BMdyA=="],
 
-    "@openzeppelin/contracts": ["@openzeppelin/contracts@5.2.0", "", {}, "sha512-bxjNie5z89W1Ea0NZLZluFh8PrFNn9DH8DQlujEok2yjsOlraUPKID5p1Wk3qdNbf6XkQ1Os2RvfiHrrXLHWKA=="],
+    "@openzeppelin/contracts": ["@openzeppelin/contracts@5.3.0", "", {}, "sha512-zj/KGoW7zxWUE8qOI++rUM18v+VeLTTzKs/DJFkSzHpQFPD/jKKF0TrMxBfGLl3kpdELCNccvB3zmofSzm4nlA=="],
 
-    "@openzeppelin/contracts-upgradeable": ["@openzeppelin/contracts-upgradeable@5.2.0", "", { "peerDependencies": { "@openzeppelin/contracts": "5.2.0" } }, "sha512-mZIu9oa4tQTlGiOJHk6D3LdJlqFqF6oNOSn6S6UVJtzfs9UsY9/dhMEbAVTwElxUtJnjpf6yA062+oBp+eOyPg=="],
+    "@openzeppelin/contracts-upgradeable": ["@openzeppelin/contracts-upgradeable@5.3.0", "", { "peerDependencies": { "@openzeppelin/contracts": "5.3.0" } }, "sha512-yVzSSyTMWO6rapGI5tuqkcLpcGGXA0UA1vScyV5EhE5yw8By3Ewex9rDUw8lfVw0iTkvR/egjfcW5vpk03lqZg=="],
 
     "@pkgjs/parseargs": ["@pkgjs/parseargs@0.11.0", "", {}, "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg=="],
 
@@ -407,7 +407,7 @@
 
     "@solarity/hardhat-migrate": ["@solarity/hardhat-migrate@3.0.2", "", { "dependencies": { "@trezor/connect": "9.5.0", "axios": "1.7.9", "ethers": "6.13.5", "json2md": "2.0.2", "ora": "5.4.1", "prettier": "3.5.1" }, "peerDependencies": { "@nomicfoundation/hardhat-ethers": "^3.0.0", "@nomicfoundation/hardhat-verify": "^2.0.0", "hardhat": "^2.10.0", "typechain": "^8.0.0" } }, "sha512-JpwYUjebMMTlGqPhraVEkxRkf1Qv8lKl5J/FeLr/G5ifrt519jm0vuVPux7ys4TyBpzVQCeI/hzzQNf7oHfPwQ=="],
 
-    "@solarity/solidity-lib": ["@solarity/solidity-lib@3.0.0-rc.2", "", { "dependencies": { "@openzeppelin/contracts": "5.2.0", "@openzeppelin/contracts-upgradeable": "5.2.0", "@uniswap/v2-core": "1.0.1", "@uniswap/v2-periphery": "1.1.0-beta.0", "@uniswap/v3-core": "1.0.1", "@uniswap/v3-periphery": "1.4.4" } }, "sha512-iV/SXuzXGMGhjs3aYYi2T+xFV2FAOqZoD2md4XuAP7c028nZYrXwoINZ3JquspOtbZIOJ2rA6pWdjqkL7QFPvA=="],
+    "@solarity/solidity-lib": ["@solarity/solidity-lib@3.1.0", "", { "dependencies": { "@openzeppelin/contracts": "5.2.0", "@openzeppelin/contracts-upgradeable": "5.2.0", "@uniswap/v2-core": "1.0.1", "@uniswap/v2-periphery": "1.1.0-beta.0", "@uniswap/v3-core": "1.0.1", "@uniswap/v3-periphery": "1.4.4" } }, "sha512-+BGcJ2g0n/bFYDreO8Z3jlL3tDSoSOfDsb/uqKtPx6920vCrVIyt/yUIe9F8BATcGDbg8lN+ymZtdi5Zp2zlLg=="],
 
     "@solidity-parser/parser": ["@solidity-parser/parser@0.19.0", "", {}, "sha512-RV16k/qIxW/wWc+mLzV3ARyKUaMUTBy9tOLMzFhtNSKYeTAanQ3a5MudJKf/8arIFnA2L27SNjarQKmFg0w/jA=="],
 
@@ -1740,6 +1740,10 @@
     "@solarity/hardhat-markup/solidity-ast": ["solidity-ast@0.4.59", "", {}, "sha512-I+CX0wrYUN9jDfYtcgWSe+OAowaXy8/1YQy7NS4ni5IBDmIYBq7ZzaP/7QqouLjzZapmQtvGLqCaYgoUWqBo5g=="],
 
     "@solarity/hardhat-migrate/prettier": ["prettier@3.5.1", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-hPpFQvHwL3Qv5AdRvBFMhnKo4tYxp0ReXiPn2bxkiohEX6mBeBwEpBSQTkD458RaaDKQMYSp4hX4UtfUTA5wDw=="],
+
+    "@solarity/solidity-lib/@openzeppelin/contracts": ["@openzeppelin/contracts@5.2.0", "", {}, "sha512-bxjNie5z89W1Ea0NZLZluFh8PrFNn9DH8DQlujEok2yjsOlraUPKID5p1Wk3qdNbf6XkQ1Os2RvfiHrrXLHWKA=="],
+
+    "@solarity/solidity-lib/@openzeppelin/contracts-upgradeable": ["@openzeppelin/contracts-upgradeable@5.2.0", "", { "peerDependencies": { "@openzeppelin/contracts": "5.2.0" } }, "sha512-mZIu9oa4tQTlGiOJHk6D3LdJlqFqF6oNOSn6S6UVJtzfs9UsY9/dhMEbAVTwElxUtJnjpf6yA062+oBp+eOyPg=="],
 
     "@swc/helpers/tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 

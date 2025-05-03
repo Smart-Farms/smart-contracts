@@ -20,10 +20,6 @@ import { HardhatUserConfig } from "hardhat/config";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-function privateKey() {
-  return process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [];
-}
-
 const config: HardhatUserConfig = {
   networks: {
     hardhat: {
@@ -35,38 +31,31 @@ const config: HardhatUserConfig = {
     },
     sepolia: {
       url: `https://sepolia.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: privateKey(),
       gasMultiplier: 1.2,
     },
     chapel: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
-      accounts: privateKey(),
       gasMultiplier: 1.2,
       timeout: 60000,
     },
     fuji: {
       url: `https://avalanche-fuji.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: privateKey(),
       gasMultiplier: 1.2,
     },
     bsc: {
       url: "https://bsc-dataseed.binance.org/",
-      accounts: privateKey(),
       gasMultiplier: 1.2,
     },
     ethereum: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: privateKey(),
       gasMultiplier: 1.2,
     },
     polygon: {
       url: `https://matic-mainnet.chainstacklabs.com`,
-      accounts: privateKey(),
       gasMultiplier: 1.2,
     },
     avalanche: {
       url: `https://api.avax.network/ext/bc/C/rpc`,
-      accounts: privateKey(),
       gasMultiplier: 1.2,
       timeout: 60000,
     },
@@ -109,14 +98,12 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: "USD",
     gasPrice: 50,
-    enabled: false,
+    enabled: true,
     coinmarketcap: `${process.env.COINMARKETCAP_KEY}`,
   },
   typechain: {
     outDir: "generated-types/ethers",
     target: "ethers-v6",
-    alwaysGenerateOverloads: true,
-    discriminateTypes: true,
   },
 };
 

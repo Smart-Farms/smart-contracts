@@ -4,6 +4,12 @@ pragma solidity ^0.8.28;
 import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
 
 interface IStakingModule is IERC6372 {
+    struct UserDistribution {
+        uint256 shares;
+        uint256 cumulativeSum;
+        uint256 owedValue;
+    }
+
     struct StakingData {
         address rewardToken;
         uint256 totalStake;
@@ -27,6 +33,7 @@ interface IStakingModule is IERC6372 {
         bool isDeposited;
         uint256 stakedAmount;
         uint256 pendingRewards;
+        UserDistribution userDistribution;
         UserClaimedRewards claimedRewards;
         uint48 lastProcessedSnapshot;
     }
