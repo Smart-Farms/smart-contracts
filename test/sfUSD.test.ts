@@ -365,8 +365,8 @@ describe("SfUSD", () => {
       }
 
       const gasUsed = (await (await sfUSD.connect(ALICE).claimRewards()).wait())?.gasUsed;
-      expect(gasUsed).to.be.greaterThan(10 ** 6);
-      expect(gasUsed).to.be.lessThan(5 * 10 ** 6);
+      expect(gasUsed).to.be.greaterThan(1.01 * 10 ** 6);
+      expect(gasUsed).to.be.lessThan(1.1 * 10 ** 6);
     });
   });
 

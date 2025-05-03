@@ -366,7 +366,7 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
         UserDistribution storage _userDist = $.userDistributions[user_];
 
-        if (amount_ > _userDist.shares) revert InsufficientSharesAmount(user_, _userDist.shares, amount_);
+        require(amount_ <= _userDist.shares, InsufficientSharesAmount(user_, _userDist.shares, amount_));
 
         _updateUserPendingRewards(user_, clock());
 
@@ -407,6 +407,6 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
     function _getValueToDistribute(uint256 timeUpTo_, uint256 timeLastUpdate_) private view returns (uint256) {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
-        return Math.mulDiv((timeUpTo_ - timeLastUpdate_), $.totalShares, 0.0001 ether);
+        return Math.mulDiv((timeUpTo_ - timeLastUpdate_), $.totalShares, 1);
     }
 }

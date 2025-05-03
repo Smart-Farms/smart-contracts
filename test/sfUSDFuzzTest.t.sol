@@ -55,11 +55,11 @@ contract sfUSDFuzzTest is Test {
         uint200 stakeAmount,
         uint32[] memory periodLengths
     ) public {
-        stakeAmount = uint200(bound(stakeAmount, 10**18, 10**25));
+        stakeAmount = uint200(bound(stakeAmount, 1, 10**55));
 
         if (periodLengths.length == 0) return;
 
-        uint256 periodCount = bound(periodLengths.length, 1, 10);
+        uint256 periodCount = bound(periodLengths.length, 1, 2000);
 
         system.mint(user1, stakeAmount);
         system.mint(user2, stakeAmount);
@@ -67,11 +67,11 @@ contract sfUSDFuzzTest is Test {
         uint256[] memory rewards = new uint256[](periodCount);
 
         for (uint256 i = 0; i < periodCount; i++) {
-            uint256 periodLength = bound(periodLengths[i], 1 days, 30 days);
+            uint256 periodLength = bound(periodLengths[i], 1 days, 1365 days);
 
             vm.warp(block.timestamp + periodLength);
 
-            uint256 periodReward = bound(periodLengths[i], 10**6, 10**12);
+            uint256 periodReward = bound(periodLengths[i], 1, 10**45);
             rewards[i] = periodReward;
 
             rewardToken.mint(address(this), periodReward);
@@ -113,9 +113,9 @@ contract sfUSDFuzzTest is Test {
         uint200 amount2,
         uint256 rewards
     ) public {
-        amount1 = uint200(bound(amount1, 10**18, 10**45));
-        amount2 = uint200(bound(amount2, 10**18, 10**45));
-        rewards = bound(rewards, 10**6, 10**25);
+        amount1 = uint200(bound(amount1, 1, 10**55));
+        amount2 = uint200(bound(amount2, 1, 10**55));
+        rewards = bound(rewards, 1, 10**35);
 
         system.mint(user1, amount1);
         system.mint(user2, amount2);
@@ -142,15 +142,15 @@ contract sfUSDFuzzTest is Test {
         uint200 amount2,
         uint200[] memory rewards
     ) public {
-        amount1 = uint200(bound(amount1, 10**18, 10**25));
-        amount2 = uint200(bound(amount2, 10**18, 10**25));
+        amount1 = uint200(bound(amount1, 1, 10**55));
+        amount2 = uint200(bound(amount2, 1, 10**55));
 
         system.mint(user1, amount1);
         system.mint(user2, amount2);
 
         if (rewards.length == 0) return;
 
-        uint256 rewardsLen = bound(rewards.length, 1, 10);
+        uint256 rewardsLen = bound(rewards.length, 1, 2000);
 
         uint96[] memory timePeriods = new uint96[](rewardsLen);
         for (uint256 i = 0; i < rewardsLen; i++) {
@@ -160,7 +160,7 @@ contract sfUSDFuzzTest is Test {
         uint256 totalRewards;
 
         for (uint256 i = 0; i < rewardsLen; i++) {
-            uint256 periodReward = bound(rewards[i], 10**6, 10**12);
+            uint256 periodReward = bound(rewards[i], 10, 10**45);
             totalRewards += periodReward;
 
             uint256 timePeriod = bound(timePeriods[i], 1 days, 10000 days);
