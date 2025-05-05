@@ -105,6 +105,15 @@ const config: HardhatUserConfig = {
     outDir: "generated-types/ethers",
     target: "ethers-v6",
   },
+  markup: {
+    onlyFiles: [
+      "contracts/StakingModule.sol",
+      "contracts/sfUSD.sol",
+      "contracts/interfaces/ISFUSD.sol",
+      "contracts/interfaces/IStakingModule.sol",
+    ],
+    outdir: "docs",
+  },
 };
 
 export default config;

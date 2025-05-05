@@ -23,10 +23,10 @@ jobs:
 
       - name: Generate Docs
         run: |
-          npx hardhat markup --outdir _docs
-          rm -rf _docs/contracts/mock
-          rm -rf _docs/contracts/interfaces
-          # Removed copy steps to external repo
+          npx hardhat markup --outdir docs/contracts
+          cp README.md docs/
+          npm install -g docsify-cli
+          docsify generate docs
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -34,7 +34,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '_docs'
+          path: 'docs'
 
   deploy:
     permissions:

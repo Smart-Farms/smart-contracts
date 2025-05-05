@@ -12,6 +12,9 @@ cache_hardhat
 
 # Typechain generated files
 generated-types
+docs/contracts
+docs/_sidebar.md
+docs/README.md
 
 # Hardhat migrate
 .storage.json
