@@ -1,16 +1,9 @@
 name: "docs"
 
 on:
-  workflow_dispatch:
-  workflow_run:
-    workflows:
-      - test
-      - checks
-    types:
-      - completed
+  push:
     branches:
       - main
-      - dev
 
 # Add permissions for GitHub Pages deployment
 permissions:
@@ -21,7 +14,6 @@ permissions:
 jobs:
   docs:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
@@ -44,13 +36,16 @@ jobs:
         with:
           path: '_docs'
 
-deploy:
-  environment:
-    name: github-pages
-    url: ${{ steps.deployment.outputs.page_url }}
-  runs-on: ubuntu-latest
-  needs: docs
-  steps:
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+  deploy:
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: docs
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
