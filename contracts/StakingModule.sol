@@ -5,16 +5,45 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IStakingModule} from "./interfaces/IStakingModule.sol";
 
+/**
+ * @title StakingModule
+ * @notice Provides the foundation for staking mechanisms where rewards are distributed proportionally
+ * based on time and staked shares. Uses ERC7201 storage pattern.
+ */
 abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
+    /**
+     * @dev High precision value used for fixed-point arithmetic in cumulative sum calculations.
+     *      Chosen as 10**25 to minimize rounding errors over potentially long periods.
+     */
     uint256 private constant PRECISION = 10 ** 25;
 
-    /// @custom:storage-location erc7201:sfUSD.storage.StakingModule
+    /**
+     * @notice Stores all state variables for the StakingModule to prevent storage collisions.
+     * @custom:storage-location erc7201:sfUSD.storage.StakingModule
+     * @param rewardToken The ERC20 token distributed as rewards.
+     * @param totalStake Total amount of the underlying staked token (e.g., sfUSD) held by the module.
+     * @param lastUpdateTime Timestamp of the last global reward state update.
+     * @param totalShares Total shares currently staked by all users.
+     * @param cumulativeSum Global accumulator representing cumulative virtual rewards per share over time.
+     * @param updatedAt Timestamp when the `cumulativeSum` was last updated.
+     * @param isUserDeposited Mapping track if a user has ever staked, for initialization.
+     * @param userDistributions Mapping from user address to their distribution state (shares, owedValue, etc.).
+     * @param userPendingRewards Mapping from user address to their currently claimable (but unclaimed) reward amount.
+     * @param userClaimedRewards Mapping from user address to the total actual/virtual rewards accounted for.
+     * @param userLastProcessedSnapshot Mapping from user address to the last snapshot ID processed for their rewards.
+     * @param snapshotId The current snapshot ID counter, incremented on reward deposit.
+     * @param snapshotDepositTime Mapping snapshot ID to its creation timestamp.
+     * @param snapshotCumulativeSum Mapping snapshot ID to the global cumulative sum at that snapshot.
+     * @param snapshotTotalActualRewards Mapping snapshot ID to the total actual rewards deposited up to that snapshot.
+     * @param snapshotTotalVirtualRewards Mapping snapshot ID to the total virtual rewards accrued up to that snapshot.
+     */
     struct StakingModuleStorage {
         IERC20 rewardToken;
         uint256 totalStake;
@@ -34,35 +63,72 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         mapping(uint48 snapshot => uint256 totalVirtualRewards) snapshotTotalVirtualRewards;
     }
 
+    /**
+     * @notice Emitted when a new snapshot is created; emitted during reward deposit.
+     * @param snapshotId The ID of the newly created snapshot.
+     */
     event Checkpointed(uint256 snapshotId);
 
+    /**
+     * @notice Emitted when reward tokens are deposited into the module.
+     * @param amount The amount of reward tokens deposited.
+     */
     event RewardsDeposited(uint256 amount);
+
+    /**
+     * @notice Emitted when a user stakes tokens.
+     * @param account The address of the user staking.
+     * @param amount The amount of underlying tokens staked.
+     */
     event UserStaked(address indexed account, uint256 amount);
+
+    /**
+     * @notice Emitted when a user unstakes tokens.
+     * @param account The address of the user unstaking.
+     * @param amount The amount of underlying tokens unstaked.
+     */
     event UserUnstaked(address indexed account, uint256 amount);
+
+    /**
+     * @notice Emitted when a user claims their pending rewards.
+     * @param account The address of the user claiming rewards.
+     * @param amount The amount of reward tokens claimed.
+     */
     event RewardsClaimed(address indexed account, uint256 amount);
 
+    /// @notice Error reverted when attempting an operation (stake, unstake, deposit) with zero amount.
     error ProvidedZeroAmount();
+    /// @notice Error reverted when trying to deposit rewards (`_snapshotOnRewardsDeposit`) when there are no virtual rewards generated yet (division by zero protection).
     error NoRewardsToDistribute();
+    /// @notice Error reverted during initialization if the provided reward token address is the zero address.
     error InvalidRewardTokenAddress();
+    /// @notice Error reverted in `_updateUserPendingRewards` if calculated owed value exceeds the user's stored owed value (internal inconsistency check).
     error InsufficientOwedValue(address account, uint256 balance, uint256 needed);
+    /// @notice Error reverted when trying to look up data for a future snapshot ID.
     error StakingModuleFutureLookup(uint256 snapshotId, uint256 currentsnapshotId);
+    /// @notice Error reverted when trying to remove more shares than a user possesses.
     error InsufficientSharesAmount(address account, uint256 balance, uint256 needed);
+    /// @notice Error reverted during unstake if the user does not have enough staked shares.
     error InsufficientBalanceToUnstake(address account, uint256 currentStake, uint256 amount);
 
     // keccak256(abi.encode(uint256(keccak256("sfUSD.storage.StakingModule")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STAKING_MODULE_STORAGE_LOCATION =
         0x3fdbb0b6fbdc22aa6cfbfb60ef44b75ee821b09be8a4d5fffd8504bbf3dd9500;
 
+    /**
+     * @dev Gets the pointer to the StakingModuleStorage struct in storage.
+     */
     function _getStakingModuleStorage() internal pure returns (StakingModuleStorage storage $) {
         assembly {
             $.slot := STAKING_MODULE_STORAGE_LOCATION
         }
     }
 
-    constructor() {
-        _disableInitializers();
-    }
-
+    /**
+     * @notice Initializes the StakingModule.
+     * @dev Sets the reward token address and performs the initial snapshot. Can only be called once.
+     * @param rewardToken_ The address of the ERC20 reward token.
+     */
     function __StakingModule_init(address rewardToken_) internal onlyInitializing {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
@@ -73,22 +139,38 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         _snapshotOnRewardsDeposit(0);
     }
 
+    /**
+     * @inheritdoc IStakingModule
+     * @dev Requires amount > 0. Calls internal `_stake` function.
+     */
     function stake(uint256 amount_) external {
         require(amount_ > 0, ProvidedZeroAmount());
 
         _stake(_msgSender(), amount_);
     }
 
+    /**
+     * @inheritdoc IStakingModule
+     * @dev Requires amount > 0. Calls internal `_unstake` function.
+     */
     function unstake(uint256 amount_) external {
         require(amount_ > 0, ProvidedZeroAmount());
 
         _unstake(_msgSender(), amount_);
     }
 
+    /**
+     * @inheritdoc IStakingModule
+     * @dev Claims rewards up to the current snapshot ID (current time).
+     */
     function claimRewards() external {
         claimRewardsUntil(clock());
     }
 
+    /**
+     * @inheritdoc IStakingModule
+     * @dev Updates pending rewards first, then transfers if rewards > 0.
+     */
     function claimRewardsUntil(uint48 snapshotId_) public {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
@@ -97,13 +179,16 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         uint256 rewards_ = $.userPendingRewards[_msgSender()];
         if (rewards_ == 0) return;
 
-        $.rewardToken.safeTransfer(_msgSender(), rewards_);
-
         $.userPendingRewards[_msgSender()] = 0;
+
+        $.rewardToken.safeTransfer(_msgSender(), rewards_);
 
         emit RewardsClaimed(_msgSender(), rewards_);
     }
 
+    /**
+     * @inheritdoc IStakingModule
+     */
     function depositRewards(uint256 amount_) external onlyOwner {
         require(amount_ > 0, ProvidedZeroAmount());
 
@@ -115,10 +200,19 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         emit RewardsDeposited(amount_);
     }
 
+    /**
+     * @notice Gets the number of shares staked by a specific user.
+     * @dev This is used internally by implementing contracts (like sfUSD) to reconstruct total balance.
+     * @param account_ The address of the user.
+     * @return uint256 The number of shares staked by the user.
+     */
     function getUserStake(address account_) public view returns (uint256) {
         return _getStakingModuleStorage().userDistributions[account_].shares;
     }
 
+    /**
+     * @inheritdoc IStakingModule
+     */
     function getStakingData() external view returns (StakingData memory) {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
@@ -131,6 +225,9 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
             });
     }
 
+    /**
+     * @inheritdoc IStakingModule
+     */
     function getStakingAtData(uint256 snapshotId_) external view returns (StakingAtData memory) {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
         uint48 currentSnapshot_ = clock();
@@ -148,6 +245,9 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
             });
     }
 
+    /**
+     * @inheritdoc IStakingModule
+     */
     function getUserStakingData(address account_) external view returns (UserStakingData memory) {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
@@ -162,6 +262,9 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
             });
     }
 
+    /**
+     * @inheritdoc IStakingModule
+     */
     function getPendingRewards(address account_) external view returns (uint256) {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
@@ -214,16 +317,35 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         return userPendingRewards_;
     }
 
-    function clock() public view returns (uint48) {
+    /**
+     * @inheritdoc IERC6372
+     */
+    function clock() public view virtual override returns (uint48) {
         return _getStakingModuleStorage().snapshotId;
     }
 
-    function CLOCK_MODE() public view virtual returns (string memory) {
+    /**
+     * @inheritdoc IERC6372
+     */
+    function CLOCK_MODE() public view virtual override returns (string memory) {
         return "mode=counter";
     }
 
+    /**
+     * @dev Abstract internal function hook called during stake/unstake operations.
+     * @param from The address sending the token (user during unstake, contract during stake).
+     * @param to The address receiving the token (contract during unstake, user during stake).
+     * @param value The amount of the underlying token being transferred.
+     */
     function _sfUSDTransfer(address from, address to, uint256 value) internal virtual;
 
+    /**
+     * @dev Internal logic for staking.
+     * Initializes user state if first deposit, adds shares, updates total stake,
+     * emits event, and calls the `_sfUSDTransfer` hook.
+     * @param account_ The user staking.
+     * @param amount_ The amount being staked.
+     */
     function _stake(address account_, uint256 amount_) internal {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
@@ -252,6 +374,12 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         _sfUSDTransfer(account_, address(this), amount_);
     }
 
+    /**
+     * @dev Internal logic for unstaking.
+     * Removes shares, updates total stake, emits event, and calls the `_sfUSDTransfer` hook.
+     * @param account_ The user unstaking.
+     * @param amount_ The amount being unstaked.
+     */
     function _unstake(address account_, uint256 amount_) internal {
         _removeShares(account_, amount_);
 
@@ -263,6 +391,14 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         _sfUSDTransfer(address(this), account_, amount_);
     }
 
+    /**
+     * @dev Calculates and updates a user's pending rewards based on unprocessed snapshots.
+     * Iterates from `userLastProcessedSnapshot + 1` up to `untilSnapshot_`.
+     * Updates `userPendingRewards`, `userLastProcessedSnapshot`, and `userClaimedRewards` storage.
+     * Also updates the user's `owedValue`.
+     * @param account_ The user whose rewards are being updated.
+     * @param untilSnapshot_ The snapshot ID *after* the last one to process.
+     */
     function _updateUserPendingRewards(address account_, uint48 untilSnapshot_) private {
         _updateVirtualRewards();
 
@@ -322,7 +458,12 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         userClaimedRewards.virtualRewards = userClaimedRewardsVirtual_;
     }
 
-    function _snapshotOnRewardsDeposit(uint256 amount_) private returns (uint256) {
+    /**
+     * @dev Creates a new snapshot, capturing current state and updating reward totals.
+     * @param amount_ The amount of actual rewards being deposited in this snapshot.
+     * @return oldSnapshot_ The ID of the snapshot that was just created.
+     */
+    function _snapshotOnRewardsDeposit(uint256 amount_) private returns (uint48) {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
         _update(address(0));
@@ -345,6 +486,10 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         return oldSnapshot_;
     }
 
+    /**
+     * @dev Updates the total virtual rewards for the *current* (in-progress) snapshot ID
+     * based on time elapsed since the last update.
+     */
     function _updateVirtualRewards() private {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
@@ -353,6 +498,12 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         $.lastUpdateTime = block.timestamp;
     }
 
+    /**
+     * @dev Internal function to add shares for a user.
+     * Updates user rewards first, then increases total and user shares.
+     * @param user_ The user receiving shares.
+     * @param amount_ The amount of shares to add.
+     */
     function _addShares(address user_, uint256 amount_) private {
         _updateUserPendingRewards(user_, clock());
 
@@ -362,6 +513,12 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         $.userDistributions[user_].shares += amount_;
     }
 
+    /**
+     * @dev Internal function to remove shares from a user.
+     * Checks balance, updates user rewards first, then decreases total and user shares.
+     * @param user_ The user losing shares.
+     * @param amount_ The amount of shares to remove.
+     */
     function _removeShares(address user_, uint256 amount_) private {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
         UserDistribution storage _userDist = $.userDistributions[user_];
@@ -374,6 +531,12 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         _userDist.shares -= amount_;
     }
 
+    /**
+     * @dev Updates the global cumulative sum and optionally a user's distribution state.
+     * Calculates virtual rewards accrued since the last update and updates the global sum.
+     * If a user is provided, updates their owed value and cumulative sum marker.
+     * @param user_ The user to update (or address(0) for global update only).
+     */
     function _update(address user_) private {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
@@ -392,6 +555,11 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         }
     }
 
+    /**
+     * @dev Calculates the future global cumulative sum based on time elapsed.
+     * @param timeUpTo_ The timestamp to calculate the sum up to.
+     * @return uint256 The calculated cumulative sum.
+     */
     function _getFutureCumulativeSum(uint256 timeUpTo_) private view returns (uint256) {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
@@ -404,6 +572,12 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         return $.cumulativeSum + Math.mulDiv(value_, PRECISION, $.totalShares);
     }
 
+    /**
+     * @dev Calculates the amount of "virtual value" generated over a time period.
+     * @param timeUpTo_ The end timestamp of the period.
+     * @param timeLastUpdate_ The start timestamp of the period.
+     * @return uint256 The calculated virtual value.
+     */
     function _getValueToDistribute(uint256 timeUpTo_, uint256 timeLastUpdate_) private view returns (uint256) {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
