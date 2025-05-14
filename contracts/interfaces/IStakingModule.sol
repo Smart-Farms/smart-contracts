@@ -92,6 +92,54 @@ interface IStakingModule is IERC6372 {
     }
 
     /**
+     * @notice Emitted when a new snapshot is created; emitted during reward deposit.
+     * @param snapshotId The ID of the newly created snapshot.
+     */
+    event Checkpointed(uint256 snapshotId);
+
+    /**
+     * @notice Emitted when reward tokens are deposited into the module.
+     * @param amount The amount of reward tokens deposited.
+     */
+    event RewardsDeposited(uint256 amount);
+
+    /**
+     * @notice Emitted when a user stakes tokens.
+     * @param account The address of the user staking.
+     * @param amount The amount of underlying tokens staked.
+     */
+    event UserStaked(address indexed account, uint256 amount);
+
+    /**
+     * @notice Emitted when a user unstakes tokens.
+     * @param account The address of the user unstaking.
+     * @param amount The amount of underlying tokens unstaked.
+     */
+    event UserUnstaked(address indexed account, uint256 amount);
+
+    /**
+     * @notice Emitted when a user claims their pending rewards.
+     * @param account The address of the user claiming rewards.
+     * @param amount The amount of reward tokens claimed.
+     */
+    event RewardsClaimed(address indexed account, uint256 amount);
+
+    /// @notice Error reverted when attempting an operation (stake, unstake, deposit) with zero amount.
+    error ProvidedZeroAmount();
+    /// @notice Error reverted when trying to deposit rewards (`_snapshotOnRewardsDeposit`) when there are no virtual rewards generated yet (division by zero protection).
+    error NoRewardsToDistribute();
+    /// @notice Error reverted during initialization if the provided reward token address is the zero address.
+    error InvalidRewardTokenAddress();
+    /// @notice Error reverted in `_updateUserPendingRewards` if calculated owed value exceeds the user's stored owed value (internal inconsistency check).
+    error InsufficientOwedValue(address account, uint256 balance, uint256 needed);
+    /// @notice Error reverted when trying to look up data for a future snapshot ID.
+    error StakingModuleFutureLookup(uint256 snapshotId, uint256 currentsnapshotId);
+    /// @notice Error reverted when trying to remove more shares than a user possesses.
+    error InsufficientSharesAmount(address account, uint256 balance, uint256 needed);
+    /// @notice Error reverted during unstake if the user does not have enough staked shares.
+    error InsufficientBalanceToUnstake(address account, uint256 currentStake, uint256 amount);
+
+    /**
      * @notice Stakes a given amount of the underlying token for the caller.
      * @dev Updates the user's shares and related state. Triggers necessary reward updates.
      * @param amount_ The amount of the underlying token to stake.
