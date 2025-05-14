@@ -25,13 +25,6 @@ import {IStakingModule} from "./interfaces/IStakingModule.sol";
  */
 contract sfUSD is ISFUSD, ERC165, StakingModule, ERC20Upgradeable, UUPSUpgradeable {
     /**
-     * @notice Error reverted if a transfer, mint, or burn value exceeds the internal `uint200` limit.
-     * @param value The value that exceeded the limit.
-     * @param max The maximum allowed value (type(uint200).max).
-     */
-    error ValueTooHigh(uint256 value, uint208 max);
-
-    /**
      * @dev Disables initializers to prevent initialization of implementation.
      */
     constructor() {
@@ -77,6 +70,25 @@ contract sfUSD is ISFUSD, ERC165, StakingModule, ERC20Upgradeable, UUPSUpgradeab
     }
 
     /**
+     * @inheritdoc ERC165
+     */
+    function supportsInterface(bytes4 interfaceId_) public view override(IERC165, ERC165) returns (bool) {
+        return
+            interfaceId_ == type(IERC20).interfaceId ||
+            interfaceId_ == type(ISFUSD).interfaceId ||
+            interfaceId_ == type(IERC6372).interfaceId ||
+            interfaceId_ == type(IStakingModule).interfaceId ||
+            super.supportsInterface(interfaceId_);
+    }
+
+    /**
+     * @notice Returns the current implementation address for the UUPS proxy.
+     */
+    function implementation() external view returns (address) {
+        return ERC1967Utils.getImplementation();
+    }
+
+    /**
      * @dev Internal hook called by `_stake` and `_unstake` in the inherited `StakingModule`.
      *      Implements the required token transfer logic for staking/unstaking operations.
      * @inheritdoc StakingModule
@@ -115,25 +127,6 @@ contract sfUSD is ISFUSD, ERC165, StakingModule, ERC20Upgradeable, UUPSUpgradeab
         }
     }
 
-    /**
-     * @inheritdoc ERC165
-     */
-    function supportsInterface(bytes4 interfaceId_) public view override(IERC165, ERC165) returns (bool) {
-        return
-            interfaceId_ == type(IERC20).interfaceId ||
-            interfaceId_ == type(ISFUSD).interfaceId ||
-            interfaceId_ == type(IERC6372).interfaceId ||
-            interfaceId_ == type(IStakingModule).interfaceId ||
-            super.supportsInterface(interfaceId_);
-    }
-
     // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address) internal override onlyOwner {}
-
-    /**
-     * @notice Returns the current implementation address for the UUPS proxy.
-     */
-    function implementation() external view returns (address) {
-        return ERC1967Utils.getImplementation();
-    }
 }

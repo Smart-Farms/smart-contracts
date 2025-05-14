@@ -16,6 +16,13 @@ import {IStakingModule} from "./IStakingModule.sol";
  */
 interface ISFUSD is IERC165, IStakingModule {
     /**
+     * @notice Error reverted if a transfer, mint, or burn value exceeds the internal `uint200` limit.
+     * @param value The value that exceeded the limit.
+     * @param max The maximum allowed value (type(uint200).max).
+     */
+    error ValueTooHigh(uint256 value, uint208 max);
+
+    /**
      * @notice Mints new sfUSD tokens and assigns them to a recipient.
      * @dev Restricted to an owner. The minted tokens are
      * automatically staked for the recipient via the integrated StakingModule logic.
