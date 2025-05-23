@@ -8,6 +8,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC6372} from "@openzeppelin/contracts/interfaces/IERC6372.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import {PRECISION} from "@solarity/solidity-lib/utils/Globals.sol";
+
 import {IStakingModule} from "./interfaces/IStakingModule.sol";
 
 /**
@@ -17,12 +19,6 @@ import {IStakingModule} from "./interfaces/IStakingModule.sol";
  */
 abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
     using SafeERC20 for IERC20;
-
-    /**
-     * @dev High precision value used for fixed-point arithmetic in cumulative sum calculations.
-     *      Chosen as 10**25 to minimize rounding errors over potentially long periods.
-     */
-    uint256 private constant PRECISION = 10 ** 25;
 
     /**
      * @notice Stores all state variables for the StakingModule to prevent storage collisions.
@@ -63,66 +59,9 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         mapping(uint48 snapshot => uint256 totalVirtualRewards) snapshotTotalVirtualRewards;
     }
 
-    /**
-     * @notice Emitted when a new snapshot is created; emitted during reward deposit.
-     * @param snapshotId The ID of the newly created snapshot.
-     */
-    event Checkpointed(uint256 snapshotId);
-
-    /**
-     * @notice Emitted when reward tokens are deposited into the module.
-     * @param amount The amount of reward tokens deposited.
-     */
-    event RewardsDeposited(uint256 amount);
-
-    /**
-     * @notice Emitted when a user stakes tokens.
-     * @param account The address of the user staking.
-     * @param amount The amount of underlying tokens staked.
-     */
-    event UserStaked(address indexed account, uint256 amount);
-
-    /**
-     * @notice Emitted when a user unstakes tokens.
-     * @param account The address of the user unstaking.
-     * @param amount The amount of underlying tokens unstaked.
-     */
-    event UserUnstaked(address indexed account, uint256 amount);
-
-    /**
-     * @notice Emitted when a user claims their pending rewards.
-     * @param account The address of the user claiming rewards.
-     * @param amount The amount of reward tokens claimed.
-     */
-    event RewardsClaimed(address indexed account, uint256 amount);
-
-    /// @notice Error reverted when attempting an operation (stake, unstake, deposit) with zero amount.
-    error ProvidedZeroAmount();
-    /// @notice Error reverted when trying to deposit rewards (`_snapshotOnRewardsDeposit`) when there are no virtual rewards generated yet (division by zero protection).
-    error NoRewardsToDistribute();
-    /// @notice Error reverted during initialization if the provided reward token address is the zero address.
-    error InvalidRewardTokenAddress();
-    /// @notice Error reverted in `_updateUserPendingRewards` if calculated owed value exceeds the user's stored owed value (internal inconsistency check).
-    error InsufficientOwedValue(address account, uint256 balance, uint256 needed);
-    /// @notice Error reverted when trying to look up data for a future snapshot ID.
-    error StakingModuleFutureLookup(uint256 snapshotId, uint256 currentsnapshotId);
-    /// @notice Error reverted when trying to remove more shares than a user possesses.
-    error InsufficientSharesAmount(address account, uint256 balance, uint256 needed);
-    /// @notice Error reverted during unstake if the user does not have enough staked shares.
-    error InsufficientBalanceToUnstake(address account, uint256 currentStake, uint256 amount);
-
     // keccak256(abi.encode(uint256(keccak256("sfUSD.storage.StakingModule")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STAKING_MODULE_STORAGE_LOCATION =
         0x3fdbb0b6fbdc22aa6cfbfb60ef44b75ee821b09be8a4d5fffd8504bbf3dd9500;
-
-    /**
-     * @dev Gets the pointer to the StakingModuleStorage struct in storage.
-     */
-    function _getStakingModuleStorage() internal pure returns (StakingModuleStorage storage $) {
-        assembly {
-            $.slot := STAKING_MODULE_STORAGE_LOCATION
-        }
-    }
 
     /**
      * @notice Initializes the StakingModule.
@@ -582,5 +521,14 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
         return Math.mulDiv((timeUpTo_ - timeLastUpdate_), $.totalShares, 1);
+    }
+
+    /**
+     * @dev Gets the pointer to the StakingModuleStorage struct in storage.
+     */
+    function _getStakingModuleStorage() internal pure returns (StakingModuleStorage storage $) {
+        assembly {
+            $.slot := STAKING_MODULE_STORAGE_LOCATION
+        }
     }
 }
