@@ -103,3 +103,222 @@ You can run the following command to check coverage:
 npm run coverage
 ```
 
+## Deployment Guide
+
+This guide covers deploying the `sfUSD` smart contract system to various networks using Hardhat and the `@solarity/hardhat-migrate` plugin.
+
+### Prerequisites
+
+Before deploying, ensure you have the following installed:
+
+1. **Node.js** (version 20 or higher) - [Installation Guide](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+2. **Foundry** - [Installation Guide](https://book.getfoundry.sh/getting-started/installation)
+3. **Git** - For cloning the repository
+
+### Environment Setup
+
+1. **Install Dependencies**
+```bash
+npm install && npm run init
+```
+
+2. **Set Up Environment Variables (if needed)**
+   
+Create a `.env` file in the root directory with the following variables (if needed):
+```env
+# Network RPC URLs
+INFURA_KEY=your_infura_project_id
+ALCHEMY_KEY=your_alchemy_api_key
+
+# Block Explorer API Keys (for contract verification)
+ETHERSCAN_KEY=your_etherscan_api_key
+BSCSCAN_KEY=your_bscscan_api_key
+POLYGONSCAN_KEY=your_polygonscan_api_key
+AVALANCHE_KEY=your_avalanche_api_key
+
+# Use with caution: 
+PRIVATE_KEY=0x...
+```
+
+3. **Verify Configuration**
+```bash
+npm run compile
+```
+
+### Network Configuration
+
+The deployment system supports multiple networks. To add a new network, follow these steps:
+
+1. **Add Network to Hardhat Config**
+   
+Networks are already configured in `hardhat.config.ts`. Example supported networks:
+- **Mainnets**: `ethereum`, `bsc`, `polygon`, `avalanche`
+- **Testnets**: `sepolia`, `chapel`, etc.
+
+2. **Create Network Configuration**
+   
+For each network, create a configuration file in `deploy/config/`:
+   
+```bash
+# Example: Create configuration for Sepolia testnet
+cp deploy/config/localhost.ts deploy/config/sepolia.ts
+```
+   
+Edit the configuration file with network-specific parameters:
+```typescript
+// deploy/config/sepolia.ts
+export const tokenName = "sfUSD Sepolia";
+export const tokenSymbol = "sfUSD";
+export const rewardToken = "0x..."; // Address of reward token on Sepolia, ex. address of USDC
+```
+
+3. **Update Main Configuration**
+   
+Add the new network to `deploy/config/config.ts`:
+```typescript
+import hre from "hardhat";
+
+export async function getConfig() {
+    if (hre.network.name == "localhost" || hre.network.name == "hardhat") {
+        return await import("./localhost");
+    }
+    if (hre.network.name == "sepolia") {
+        return await import("./sepolia");
+    }
+    // Add other networks...
+    
+    throw new Error(`Config for network ${hre.network.name} is not specified`);
+}
+```
+
+### Deployment Commands
+
+#### Basic Deployment
+
+Deploy to a specific network:
+```bash
+npx hardhat migrate --network <networkName>
+```
+
+Note: (dangerous) on how to import private key with hardhat: https://hardhat.org/hardhat-runner/docs/config#available-config-options
+
+#### Deployment with Verification
+
+Deploy and automatically verify contracts:
+```bash
+npx hardhat migrate --network <networkName> --verify
+```
+
+#### Deployment with External Account
+
+Deploy using an external wallet (requires Cast wallet setup):
+```bash
+npx hardhat migrate --network <networkName> --verify --account <accountName>
+```
+
+### Local Testing
+
+To test your deployment locally:
+
+1. **Start Local Node**
+```bash
+# Terminal 1
+npx hardhat node
+```
+
+2. **Run Migration**
+```bash
+# Terminal 2
+npx hardhat migrate --network localhost
+```
+
+3. **Verify Local Deployment**
+```bash
+# Check deployed contracts by reading deployed contract state
+npx hardhat console --network localhost
+```
+
+### Contract Verification
+
+#### Automatic Verification
+
+The `--verify` flag automatically verifies contracts after deployment:
+```bash
+npx hardhat migrate --network mainnet --verify
+```
+
+#### Manual Verification
+
+If automatic verification fails, you can verify contracts manually:
+```bash
+npx hardhat verify --network <networkName> <contractAddress> <constructorArgs>
+```
+
+#### Custom Networks
+
+For networks not supported by default, add custom verification endpoints to `hardhat.config.ts`:
+
+```typescript
+etherscan: {
+  apiKey: {
+    customNetwork: "your_api_key"
+  },
+  customChains: [
+    {
+      network: "customNetwork",
+      chainId: 12345,
+      urls: {
+        apiURL: "https://api.custom-explorer.com/api",
+        browserURL: "https://custom-explorer.com"
+      }
+    }
+  ]
+}
+```
+
+More information here: https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify#adding-support-for-other-networks 
+
+### Using External Wallets
+
+For production deployments, use external wallets for enhanced security:
+
+1. **Cast Wallet Integration Example**
+   
+Set up Cast wallet following the [Cast Wallet Guide](https://github.com/dl-solarity/hardhat-migrate/blob/master/docs/ExternalWallets.md#cast-wallet-integration)
+
+2. **Deploy with Cast Wallet**
+```bash
+npx hardhat migrate --network mainnet --verify --account production-wallet
+```
+
+### Troubleshooting
+
+#### Common Issues
+
+1. **"Config for network X is not specified"**
+   - Create a configuration file for the network in `deploy/config/`
+   - Update `deploy/config/config.ts` to include the new network
+
+2. **Verification Failures**
+   - Verify API keys are correct
+   - Check if the network supports verification
+   - Try manual verification with `hardhat verify`
+
+3. **Deployment Hanging**
+   - Check RPC endpoint connectivity
+   - Verify account has sufficient balance
+   - Increase transaction timeout in network config
+
+#### Getting Help
+
+- **Hardhat Migrate Documentation**: https://github.com/dl-solarity/hardhat-migrate
+- **Hardhat Verify Documentation**: https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify
+- **Network Configuration**: Check your network's documentation for RPC endpoints and explorer URLs
+
+### Security Considerations
+
+1. **Private Keys**: Never commit private keys to version control
+2. **Environment Variables**: Use `.env` files for sensitive data
+3. **Network Verification**: Always verify deployed contracts on block explorers
+4. **Testing**: Thoroughly test on testnets before mainnet deployment
+
