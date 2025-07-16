@@ -5,5 +5,9 @@ export async function getConfig() {
     return await import("./localhost");
   }
 
+  if (hre.network.name == "ethereum") {
+    return await import("./ethereum");
+  }
+
   throw new Error(`Config for network ${hre.network.name} is not specified`);
 }
