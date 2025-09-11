@@ -293,6 +293,31 @@ describe("SfUSD", () => {
       expect(await rewardToken.balanceOf(ALICE.address)).to.be.closeTo(expectedAliceReward, 20);
       expect(await rewardToken.balanceOf(BOB.address)).to.be.closeTo(expectedBobReward, 20);
     });
+
+    it("should claim rewards even when totalShares = 0 during rewards deposit", async () => {
+      await sfUSD.mint(OWNER.address, wei(100));
+
+      await time.increase(300);
+      await sfUSD.depositRewards(usdc(5));
+
+      await expect(sfUSD.claimRewards()).to.emit(sfUSD, "RewardsClaimed").withArgs(OWNER.address, usdc(5));
+
+      await time.increase(YEAR);
+
+      await sfUSD.burn(OWNER.address, wei(100));
+
+      await time.increase(YEAR / 2n);
+
+      await sfUSD.depositRewards(usdc(5));
+
+      await expect(sfUSD.claimRewards()).to.emit(sfUSD, "RewardsClaimed").withArgs(OWNER.address, usdc(5));
+
+      await sfUSD.mint(OWNER.address, wei(100));
+
+      await sfUSD.depositRewards(usdc(5));
+
+      await expect(sfUSD.claimRewards()).to.emit(sfUSD, "RewardsClaimed").withArgs(OWNER.address, usdc(5));
+    });
   });
 
   describe("Unstaking", () => {
@@ -333,13 +358,13 @@ describe("SfUSD", () => {
     });
 
     it("should set distributedVirtualRewards to 0 after a rewards are deposited", async () => {
-      let stakingAtData: StakingAtDataStruct = await sfUSD.getStakingAtData(0);
+      let stakingAtData: StakingAtDataStruct = await sfUSD.getStakingAtData(1);
 
       expect(stakingAtData.totalVirtualRewards).to.be.gt(0);
 
       await sfUSD.depositRewards(usdc(1000));
 
-      stakingAtData = await sfUSD.getStakingAtData(1);
+      stakingAtData = await sfUSD.getStakingAtData(2);
 
       expect(stakingAtData.totalVirtualRewards).to.eq(0);
     });

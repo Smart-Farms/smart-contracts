@@ -5,7 +5,7 @@ import { SfUSD__factory } from "@ethers-v6";
 import { getConfig } from "@/deploy/config/config";
 
 // Note:
-// Ethereum Mainnet sfUSD implementation: 0x56AEed68a14cdC975021885A8b31f89D6e43cd70
+// Ethereum Mainnet sfUSD implementation: 0x4812A17a7025AE348574F1542CAdBC90DE5553Aa
 
 export = async (deployer: Deployer) => {
   const config = await getConfig();

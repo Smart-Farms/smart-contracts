@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -17,7 +18,7 @@ import {IStakingModule} from "./interfaces/IStakingModule.sol";
  * @notice Provides the foundation for staking mechanisms where rewards are distributed proportionally
  * based on time and staked shares. Uses ERC7201 storage pattern.
  */
-abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
+abstract contract StakingModule is IStakingModule, OwnableUpgradeable, PausableUpgradeable {
     using SafeERC20 for IERC20;
 
     /**
@@ -76,6 +77,52 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
         $.rewardToken = IERC20(rewardToken_);
 
         _snapshotOnRewardsDeposit(0);
+    }
+
+    function __StakingModule_init_v2() external reinitializer(2) {
+        __Pausable_init();
+
+        // Clean up of the previous testing done by the deployer.
+        StakingModuleStorage storage $ = _getStakingModuleStorage();
+
+        // 0. Set pending rewards to 0
+        $.userPendingRewards[_msgSender()] = 0;
+
+        // 1. Reset rewards (same procedure as in the first deposit by any user)
+        uint48 snapshot_ = clock() - 1;
+
+        uint256 snapshotTotalActualRewards_ = $.snapshotTotalActualRewards[snapshot_];
+        uint256 snapshotTotalVirtualRewards_ = $.snapshotTotalVirtualRewards[snapshot_];
+
+        $.userClaimedRewards[0x5Eb6c038e5d432cc53FB5A64e4C6eCC7Fc3ffEF7] = UserClaimedRewards(
+            snapshotTotalActualRewards_,
+            snapshotTotalVirtualRewards_
+        );
+        $.userLastProcessedSnapshot[0x5Eb6c038e5d432cc53FB5A64e4C6eCC7Fc3ffEF7] = snapshot_;
+
+        // 1.1 Fix the deployer state after testing during review (v2)
+        $.userDistributions[0x5Eb6c038e5d432cc53FB5A64e4C6eCC7Fc3ffEF7] = UserDistribution(
+            0,
+            $.snapshotCumulativeSum[snapshot_],
+            90000000000000000000000
+        );
+
+        // 2. Move all testing funds to the deployer account.
+        $.rewardToken.safeTransfer(0x5Eb6c038e5d432cc53FB5A64e4C6eCC7Fc3ffEF7, 5000000);
+    }
+
+    /**
+     * @notice Pauses the StakingModule.
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @notice Unpauses the StakingModule.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /**
@@ -177,10 +224,10 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
 
         return
             StakingAtData({
-                depositTime: $.snapshotDepositTime[currentSnapshot_],
-                cumulativeSum: $.snapshotCumulativeSum[currentSnapshot_],
-                totalActualRewards: $.snapshotTotalActualRewards[currentSnapshot_],
-                totalVirtualRewards: $.snapshotTotalVirtualRewards[currentSnapshot_]
+                depositTime: $.snapshotDepositTime[uint48(snapshotId_)],
+                cumulativeSum: $.snapshotCumulativeSum[uint48(snapshotId_)],
+                totalActualRewards: $.snapshotTotalActualRewards[uint48(snapshotId_)],
+                totalVirtualRewards: $.snapshotTotalVirtualRewards[uint48(snapshotId_)]
             });
     }
 
@@ -224,7 +271,7 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
             uint256 snapshotTotalVirtualRewards_ = $.snapshotTotalVirtualRewards[snapshot_];
 
             uint256 userVirtualRewards_;
-            if (snapshot_ == userLastProcessedSnapshot_ + 1 && snapshotCumulativeSum_ > userDist_.cumulativeSum) {
+            if (snapshot_ == userLastProcessedSnapshot_ + 1 && snapshotCumulativeSum_ >= userDist_.cumulativeSum) {
                 userVirtualRewards_ =
                     userDist_.owedValue +
                     Math.mulDiv(userDist_.shares, (snapshotCumulativeSum_ - userDist_.cumulativeSum), PRECISION);
@@ -338,7 +385,7 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
      * @param account_ The user whose rewards are being updated.
      * @param untilSnapshot_ The snapshot ID *after* the last one to process.
      */
-    function _updateUserPendingRewards(address account_, uint48 untilSnapshot_) private {
+    function _updateUserPendingRewards(address account_, uint48 untilSnapshot_) private whenNotPaused {
         _updateVirtualRewards();
 
         StakingModuleStorage storage $ = _getStakingModuleStorage();
@@ -358,7 +405,7 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
             uint256 snapshotTotalVirtualRewards_ = $.snapshotTotalVirtualRewards[snapshot_];
 
             uint256 userVirtualRewards_;
-            if (snapshot_ == userLastProcessedSnapshot_ + 1 && snapshotCumulativeSum_ > userDist_.cumulativeSum) {
+            if (snapshot_ == userLastProcessedSnapshot_ + 1 && snapshotCumulativeSum_ >= userDist_.cumulativeSum) {
                 userVirtualRewards_ =
                     userDist_.owedValue +
                     Math.mulDiv(userDist_.shares, (snapshotCumulativeSum_ - userDist_.cumulativeSum), PRECISION);
@@ -443,7 +490,7 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
      * @param user_ The user receiving shares.
      * @param amount_ The amount of shares to add.
      */
-    function _addShares(address user_, uint256 amount_) private {
+    function _addShares(address user_, uint256 amount_) private whenNotPaused {
         _updateUserPendingRewards(user_, clock());
 
         StakingModuleStorage storage $ = _getStakingModuleStorage();
@@ -458,7 +505,7 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
      * @param user_ The user losing shares.
      * @param amount_ The amount of shares to remove.
      */
-    function _removeShares(address user_, uint256 amount_) private {
+    function _removeShares(address user_, uint256 amount_) private whenNotPaused {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
         UserDistribution storage _userDist = $.userDistributions[user_];
 
@@ -476,7 +523,7 @@ abstract contract StakingModule is IStakingModule, OwnableUpgradeable {
      * If a user is provided, updates their owed value and cumulative sum marker.
      * @param user_ The user to update (or address(0) for global update only).
      */
-    function _update(address user_) private {
+    function _update(address user_) private whenNotPaused {
         StakingModuleStorage storage $ = _getStakingModuleStorage();
 
         $.cumulativeSum = _getFutureCumulativeSum(block.timestamp);
