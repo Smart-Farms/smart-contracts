@@ -1,10 +1,10 @@
 # Minting Process
 
-The owner of the [sfUSD contract](https://etherscan.io/address/0x19aed06f6b87aca2010e49c573330398381ca9e8) is the [Safe account](https://app.safe.global/home?safe=eth:0xc24ee75bC645Eb696247449f2B5B596dAEDd7ECD).
+The owner of the [sfUSD contract](https://etherscan.io/address/0x19aed06f6b87aca2010e49c573330398381ca9e8) is the [Safe account](https://app.safe.global/home?safe=eth:0xc4895A7aDC01bFC2D99fE3819e583927Ac73d09c).
 
 Therefore, the mint operation should be completed via the Safe UI.
 
-1. Go to the [Safe account](https://app.safe.global/home?safe=eth:0xc24ee75bC645Eb696247449f2B5B596dAEDd7ECD).
+1. Go to the [Safe account](https://app.safe.global/home?safe=eth:0xc4895A7aDC01bFC2D99fE3819e583927Ac73d09c).
 2. Click `New transaction`, then select `Transaction Builder`.
 3. Use the sfUSD contract address [0x19aed06f6b87aca2010e49c573330398381ca9e8](https://etherscan.io/address/0x19aed06f6b87aca2010e49c573330398381ca9e8) in the `Enter Address` field.
 4. Replace the ABI in the `Enter ABI` field with the ABI from the [implementation](https://etherscan.io/address/0x4812a17a7025ae348574f1542cadbc90de5553aa#code) (scroll to the bottom to the `Contract ABI` section and click the copy button).
